@@ -5,51 +5,45 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Sky Strike: Fighter Ace</title>
-    <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- 1. 关键：引入 Babel，让浏览器能看懂 TSX 代码 -->
+    <!-- 1. 加载基础库 (注意顺序) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <style>
-      body { margin: 0; padding: 0; overflow: hidden; background-color: #000; font-family: 'Inter', sans-serif; }
+      body { margin: 0; padding: 0; overflow: hidden; background-color: #000; color: white; }
       canvas { display: block; touch-action: none; }
     </style>
-
-    <!-- 2. 修正 Import Map -->
-    <script type="importmap">
-    {
-      "imports": {
-        "react": "https://esm.sh/react@19.0.0",
-        "react-dom": "https://esm.sh/react-dom@19.0.0",
-        "react-dom/client": "https://esm.sh/react-dom@19.0.0/client"
-      }
-    }
-    </script>
   </head>
   <body>
     <div id="root"></div>
 
-    <!-- 3. 注意这里的 type 变为 text/babel，不再引用外部 index.tsx -->
-    <script type="text/babel" data-type="module">
-      import React, { useState, useEffect, useRef } from 'react';
-      import { createRoot } from 'react-dom/client';
+    <!-- 2. 使用 text/babel，直接写逻辑 -->
+    <script type="text/babel">
+      // 这里的 React 和 ReactDOM 是从上面的 <script> 标签里直接获取的全局变量
+      const { useState, useEffect, useRef } = React;
 
-      /** 
-       * 这里请粘贴你原来那个 index.tsx 文件里的【全部代码】
-       * 确保包含所有的 import 和具体的游戏逻辑
-       */
+      // --- 将 AI 生成的游戏逻辑代码粘贴在下面 ---
+      // 注意：请删除代码里所有的 "import ... from 'react'" 这种行
       
-      // 示例占位（实际请替换为你 index.tsx 的内容）：
-      const App = () => {
+      function GameApp() {
         return (
-          <div className="flex items-center justify-center h-screen text-white text-2xl">
-            游戏正在启动...
+          <div className="flex flex-col items-center justify-center h-screen">
+            <h1 className="text-4xl font-bold mb-4 text-blue-500">SKY STRIKE</h1>
+            <p className="text-xl">游戏脚本已成功加载！</p>
+            <div className="mt-8 p-4 border border-dashed border-gray-500">
+              如果看到这段文字，说明 React 渲染正常。
+            </div>
+            {/* 你的游戏 Canvas 或其他组件应该在这里 */}
           </div>
         );
-      };
+      }
 
-      const root = createRoot(document.getElementById('root'));
-      root.render(<App />);
+      // --- 渲染逻辑 ---
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(<GameApp />);
     </script>
   </body>
 </html>
