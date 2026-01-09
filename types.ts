@@ -13,10 +13,14 @@ export interface Entity {
   width: number;
   height: number;
   hp: number;
+  maxHp: number;
 }
 
 export interface Player extends Entity {
-  speed: number;
+  lives: number;
+  powerLevel: number; // 1: single, 2: dual, 3: triple
+  fireRateLevel: number;
+  damageLevel: number;
 }
 
 export interface Enemy extends Entity {
@@ -42,4 +46,14 @@ export interface Particle extends Point {
   life: number;
   color: string;
   size: number;
+}
+
+export type PowerUpType = 'SPREAD' | 'FAST' | 'POWER';
+
+export interface PowerUp extends Point {
+  id: string;
+  type: PowerUpType;
+  width: number;
+  height: number;
+  speedY: number;
 }
