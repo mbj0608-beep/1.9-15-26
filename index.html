@@ -1,17 +1,11 @@
-
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Sky Strike: Fighter Ace</title>
-    
-    <!-- 1. 引入 Tailwind (你已有的) -->
+    <!-- Tailwind 暂时保留 CDN 方式是可以的 -->
     <script src="https://cdn.tailwindcss.com"></script>
-
-    <!-- 2. 引入 Babel 编译器 (关键：让浏览器支持 tsx) -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
     <style>
       body {
         margin: 0;
@@ -25,28 +19,10 @@
         touch-action: none;
       }
     </style>
-
-    <!-- 3. Import Map (你已有的) -->
-    <script type="importmap">
-    {
-      "imports": {
-        "react": "https://esm.sh/react@^19.2.3",
-        "react-dom": "https://esm.sh/react-dom@^19.2.3",
-        "react-dom/client": "https://esm.sh/react-dom@^19.2.3/client"
-      }
-    }
-    </script>
   </head>
   <body>
     <div id="root"></div>
-
-    <!-- 4. 修改后的脚本标签 -->
-    <!-- 注意：type 变成了 "text/babel"，并添加了 data-presets 和 data-type -->
-    <script 
-      type="text/babel" 
-      data-presets="typescript,react" 
-      data-type="module" 
-      src="/index.tsx">
-    </script>
+    <!-- 注意：这里直接引用你的入口文件 -->
+    <script type="module" src="/index.tsx"></script>
   </body>
 </html>
