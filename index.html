@@ -1,65 +1,35 @@
-
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Sky Strike: Fighter Ace</title>
-    <!-- 1. 使用更稳定的 CDN -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 2. 如果你的游戏用了图标，通常需要这个 -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-    
     <style>
-        body { margin: 0; padding: 0; background-color: #000; color: white; overflow: hidden; }
-        #root { width: 100vw; height: 100vh; }
+      body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background-color: #000;
+        font-family: 'Inter', sans-serif;
+      }
+      canvas {
+        display: block;
+        touch-action: none;
+      }
     </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/"
+  }
+}
+</script>
 </head>
-<body>
+  <body>
     <div id="root"></div>
-
-    <script type="text/babel">
-        // 从全局变量获取 React 方法
-        const { useState, useEffect, useRef, useMemo } = React;
-
-        // --- 核心修复：手动模拟 lucide-react (很多 AI 生成的代码会用到它) ---
-        const Lucide = (props) => {
-            const { icon: Icon, ...others } = props;
-            return <i data-lucide={Icon} {...others}></i>;
-        };
-
-        // ==========================================
-        // 这里开始：粘贴你 index.tsx 里的全部代码
-        // ==========================================
-
-        // 注意：一定要把 index.tsx 里的所有 "import ... from 'react'" 删掉！
-        // 注意：一定要把 index.tsx 里的所有 "import { ... } from 'lucide-react'" 删掉！
-
-        const App = () => {
-            // 假设你的主要组件叫 App
-            return (
-                <div className="flex items-center justify-center h-full">
-                    <div className="text-center">
-                        <h1 className="text-4xl font-bold text-blue-500 animate-pulse">SKY STRIKE</h1>
-                        <p className="mt-4 text-gray-400">游戏逻辑加载中...</p>
-                    </div>
-                </div>
-            );
-        };
-
-        // ==========================================
-        // 这里结束：粘贴结束
-        // ==========================================
-
-        // 最后一行确保渲染
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />); 
-        
-        // 渲染图标
-        setTimeout(() => { if(window.lucide) lucide.createIcons(); }, 500);
-    </script>
-</body>
+    <script type="module" src="/index.tsx"></script>
+  </body>
 </html>
