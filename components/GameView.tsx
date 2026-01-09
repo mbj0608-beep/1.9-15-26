@@ -12,8 +12,6 @@ const GameView: React.FC<GameViewProps> = ({ gameState, onGameOver }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const requestRef = useRef<number>(0);
   
-  // Game Logic Refs
-  // Removed unused speed property to match Player interface
   const playerRef = useRef<Player>({
     id: 'player',
     x: GAME_WIDTH / 2,
@@ -59,7 +57,6 @@ const GameView: React.FC<GameViewProps> = ({ gameState, onGameOver }) => {
   }, []);
 
   const resetGame = useCallback(() => {
-    // Removed unused speed property to match Player interface
     playerRef.current = { 
       id: 'player', x: GAME_WIDTH / 2, y: GAME_HEIGHT - 120, width: 60, height: 60, 
       hp: 1, maxHp: 1, lives: 3, powerLevel: 1, fireRateLevel: 1, damageLevel: 1 
@@ -98,28 +95,21 @@ const GameView: React.FC<GameViewProps> = ({ gameState, onGameOver }) => {
   };
 
   const spawnPowerUp = (x: number, y: number) => {
-    if (Math.random() > 0.15) return; // 15% drop rate
+    if (Math.random() > 0.15) return;
     const types: PowerUpType[] = ['SPREAD', 'FAST', 'POWER'];
     const type = types[Math.floor(Math.random() * types.length)];
     powerUpsRef.current.push({
       id: Math.random().toString(),
-      x, y,
-      type,
-      width: 30,
-      height: 30,
-      speedY: 2
+      x, y, type, width: 30, height: 30, speedY: 2
     });
   };
 
   const onPlayerHit = () => {
     if (invincibilityRef.current > 0) return;
-    
     playerRef.current.lives -= 1;
     setPlayerLives(playerRef.current.lives);
     shakeRef.current = 15;
     spawnExplosion(playerRef.current.x, playerRef.current.y, '#ffffff', 30);
-    
-    // Reset Power Ups
     playerRef.current.powerLevel = 1;
     playerRef.current.fireRateLevel = 1;
     playerRef.current.damageLevel = 1;
@@ -127,7 +117,7 @@ const GameView: React.FC<GameViewProps> = ({ gameState, onGameOver }) => {
     if (playerRef.current.lives <= 0) {
       onGameOver(scoreRef.current);
     } else {
-      invincibilityRef.current = 120; // ~2 seconds at 60fps
+      invincibilityRef.current = 120;
     }
   };
 
@@ -140,7 +130,6 @@ const GameView: React.FC<GameViewProps> = ({ gameState, onGameOver }) => {
     if (shakeRef.current > 0) shakeRef.current -= 0.5;
     if (invincibilityRef.current > 0) invincibilityRef.current -= 1;
 
-    // Stage Progression
     const progress = (stageTimeRef.current / STAGE_LENGTH) * 100;
     setLevelProgress(Math.min(100, progress));
 
@@ -157,19 +146,16 @@ const GameView: React.FC<GameViewProps> = ({ gameState, onGameOver }) => {
 
     bgPosRef.current = (bgPosRef.current + 3) % GAME_HEIGHT;
 
-    // Smooth Player Movement
     const p = playerRef.current;
     p.x += (inputRef.current.x - p.x) * 0.15;
     p.y += (inputRef.current.y - p.y) * 0.15;
     p.x = Math.max(p.width / 2, Math.min(GAME_WIDTH - p.width / 2, p.x));
     p.y = Math.max(p.height / 2, Math.min(GAME_HEIGHT - p.height / 2, p.y));
 
-    // Player Shooting
     const fireInterval = Math.max(60, 150 - (p.fireRateLevel - 1) * 30);
     if (inputRef.current.isPressed && gameTimeRef.current % fireInterval < delta) {
        const bulletSpeed = -14;
        const damage = p.damageLevel;
-       
        if (p.powerLevel === 1) {
          bulletsRef.current.push({ id: Math.random().toString(), x: p.x, y: p.y - 30, speedX: 0, speedY: bulletSpeed, owner: 'player', damage });
        } else if (p.powerLevel === 2) {
@@ -182,7 +168,6 @@ const GameView: React.FC<GameViewProps> = ({ gameState, onGameOver }) => {
        }
     }
 
-    // Spawn Enemies
     if (gameTimeRef.current - lastEnemySpawnRef.current > spawnInterval) {
       const config = ENEMY_CONFIGS[Math.floor(Math.random() * ENEMY_CONFIGS.length)];
       const maxHp = config.hp + Math.floor(levelRef.current / 2);
@@ -193,14 +178,35 @@ const GameView: React.FC<GameViewProps> = ({ gameState, onGameOver }) => {
         ...config,
         hp: maxHp,
         maxHp: maxHp,
-        speed: config.speed * (1 + (levelRef.current - 1) * 0.1),
+        speed: config.speed * (1 + (levelRef.current - 1) * 0.05),
+        oscillationRange: Math.min(100, (levelRef.current - 1) * 20),
+        oscillationSpeed: 0.002 + (levelRef.current - 1) * 0.001,
         lastShot: gameTimeRef.current
       });
       lastEnemySpawnRef.current = gameTimeRef.current;
     }
 
-    // Entities Logic
     bulletsRef.current = bulletsRef.current.filter(b => {
+      // Homing logic for enemy bullets
+      if (b.owner === 'enemy' && b.isHoming) {
+        const dx = p.x - b.x;
+        const dy = p.y - b.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > 1) {
+          // Adjust velocity slightly towards player
+          const trackingStrength = Math.min(0.15, levelRef.current * 0.02);
+          b.speedX += (dx / dist) * trackingStrength;
+          b.speedY += (dy / dist) * trackingStrength;
+          
+          // Cap total speed
+          const currentSpeed = Math.sqrt(b.speedX * b.speedX + b.speedY * b.speedY);
+          const maxSpeed = 7;
+          if (currentSpeed > maxSpeed) {
+            b.speedX = (b.speedX / currentSpeed) * maxSpeed;
+            b.speedY = (b.speedY / currentSpeed) * maxSpeed;
+          }
+        }
+      }
       b.x += b.speedX; b.y += b.speedY;
       return b.y > -50 && b.y < GAME_HEIGHT + 50 && b.x > -50 && b.x < GAME_WIDTH + 50;
     });
@@ -213,7 +219,6 @@ const GameView: React.FC<GameViewProps> = ({ gameState, onGameOver }) => {
 
     powerUpsRef.current = powerUpsRef.current.filter(pu => {
       pu.y += pu.speedY;
-      // Collection
       if (Math.abs(pu.x - p.x) < p.width/2 && Math.abs(pu.y - p.y) < p.height/2) {
         if (pu.type === 'SPREAD') p.powerLevel = Math.min(3, p.powerLevel + 1);
         if (pu.type === 'FAST') p.fireRateLevel = Math.min(4, p.fireRateLevel + 1);
@@ -225,9 +230,24 @@ const GameView: React.FC<GameViewProps> = ({ gameState, onGameOver }) => {
     });
 
     enemiesRef.current = enemiesRef.current.filter(e => {
+      // Horizontal movement oscillation
+      if (e.oscillationRange > 0) {
+        e.x += Math.sin(gameTimeRef.current * e.oscillationSpeed) * (e.oscillationRange / 20) * difficultyFactor;
+        // Keep in bounds
+        e.x = Math.max(e.width/2, Math.min(GAME_WIDTH - e.width/2, e.x));
+      }
+      
       e.y += e.speed;
+      
       if (gameTimeRef.current - e.lastShot > e.fireRate / difficultyFactor) {
-        bulletsRef.current.push({ id: Math.random().toString(), x: e.x, y: e.y + e.height / 2, speedX: 0, speedY: 6, owner: 'enemy', damage: 1 });
+        const isHoming = levelRef.current >= 2;
+        bulletsRef.current.push({ 
+            id: Math.random().toString(), 
+            x: e.x, y: e.y + e.height / 2, 
+            speedX: 0, speedY: 6, 
+            owner: 'enemy', damage: 1,
+            isHoming: isHoming 
+        });
         e.lastShot = gameTimeRef.current;
       }
       if (Math.abs(e.x - p.x) < (e.width + p.width) * 0.35 && Math.abs(e.y - p.y) < (e.height + p.height) * 0.35) {
@@ -237,7 +257,6 @@ const GameView: React.FC<GameViewProps> = ({ gameState, onGameOver }) => {
       return e.y < GAME_HEIGHT + 100;
     });
 
-    // Collision Detection
     bulletsRef.current.forEach((b, bIdx) => {
       if (b.owner === 'player') {
         enemiesRef.current.forEach(e => {
@@ -274,14 +293,12 @@ const GameView: React.FC<GameViewProps> = ({ gameState, onGameOver }) => {
       ctx.translate((Math.random() - 0.5) * shakeRef.current, (Math.random() - 0.5) * shakeRef.current);
     }
 
-    // Background
     const bgImg = imagesRef.current[ASSETS.BACKGROUND];
     if (bgImg) {
       ctx.drawImage(bgImg, 0, bgPosRef.current, GAME_WIDTH, GAME_HEIGHT);
       ctx.drawImage(bgImg, 0, bgPosRef.current - GAME_HEIGHT, GAME_WIDTH, GAME_HEIGHT);
     }
 
-    // Particles
     particlesRef.current.forEach(p => {
       ctx.globalAlpha = p.life;
       ctx.fillStyle = p.color;
@@ -289,21 +306,14 @@ const GameView: React.FC<GameViewProps> = ({ gameState, onGameOver }) => {
     });
     ctx.globalAlpha = 1.0;
 
-    // Power Ups
     powerUpsRef.current.forEach(pu => {
       ctx.fillStyle = pu.type === 'SPREAD' ? '#10b981' : pu.type === 'FAST' ? '#3b82f6' : '#f43f5e';
       ctx.shadowBlur = 10; ctx.shadowColor = ctx.fillStyle;
-      ctx.beginPath();
-      ctx.rect(pu.x - pu.width/2, pu.y - pu.height/2, pu.width, pu.height);
-      ctx.fill();
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = '#fff';
-      ctx.font = 'bold 12px Arial';
-      ctx.textAlign = 'center';
+      ctx.beginPath(); ctx.rect(pu.x - pu.width/2, pu.y - pu.height/2, pu.width, pu.height); ctx.fill();
+      ctx.shadowBlur = 0; ctx.fillStyle = '#fff'; ctx.font = 'bold 12px Arial'; ctx.textAlign = 'center';
       ctx.fillText(pu.type[0], pu.x, pu.y + 5);
     });
 
-    // Enemies & Health Bars
     enemiesRef.current.forEach(e => {
       const config = ENEMY_CONFIGS.find(c => c.type === e.type);
       const img = imagesRef.current[config?.asset || ''];
@@ -311,8 +321,6 @@ const GameView: React.FC<GameViewProps> = ({ gameState, onGameOver }) => {
         ctx.save();
         ctx.translate(e.x, e.y);
         ctx.drawImage(img, -e.width / 2, -e.height / 2, e.width, e.height);
-        
-        // Health bar
         const barW = e.width * 0.8;
         const barH = 4;
         ctx.fillStyle = 'rgba(0,0,0,0.5)';
@@ -323,7 +331,6 @@ const GameView: React.FC<GameViewProps> = ({ gameState, onGameOver }) => {
       }
     });
 
-    // Player
     const player = playerRef.current;
     if (invincibilityRef.current % 10 < 5) {
       const pImg = imagesRef.current[ASSETS.PLAYER];
@@ -338,14 +345,14 @@ const GameView: React.FC<GameViewProps> = ({ gameState, onGameOver }) => {
       }
     }
 
-    // Bullets
     bulletsRef.current.forEach(b => {
       ctx.shadowBlur = 8;
       if (b.owner === 'player') {
         ctx.fillStyle = '#60a5fa'; ctx.shadowColor = '#60a5fa';
         ctx.fillRect(b.x - 2, b.y - 12, 4, 24);
       } else {
-        ctx.fillStyle = '#ef4444'; ctx.shadowColor = '#ef4444';
+        ctx.fillStyle = b.isHoming ? '#fbbf24' : '#ef4444'; 
+        ctx.shadowColor = ctx.fillStyle;
         ctx.beginPath(); ctx.arc(b.x, b.y, 5, 0, Math.PI * 2); ctx.fill();
       }
       ctx.shadowBlur = 0;

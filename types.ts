@@ -26,6 +26,8 @@ export interface Player extends Entity {
 export interface Enemy extends Entity {
   type: number;
   speed: number;
+  oscillationRange: number;
+  oscillationSpeed: number;
   scoreValue: number;
   lastShot: number;
   fireRate: number;
@@ -37,6 +39,7 @@ export interface Bullet extends Point {
   speedY: number;
   owner: 'player' | 'enemy';
   damage: number;
+  isHoming?: boolean;
 }
 
 export interface Particle extends Point {
