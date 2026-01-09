@@ -1,0 +1,357 @@
+
+import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { GameState, Player, Enemy, Bullet, Particle } from '../types';
+import { ASSETS, GAME_WIDTH, GAME_HEIGHT, ENEMY_CONFIGS, STAGE_LENGTH } from '../constants';
+
+interface GameViewProps {
+  gameState: GameState;
+  onGameOver: (score: number) => void;
+}
+
+const GameView: React.FC<GameViewProps> = ({ gameState, onGameOver }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  // Fix: Added initial value 0 to satisfy TypeScript requirement for useRef arguments in some configurations.
+  const requestRef = useRef<number>(0);
+  
+  // Game Logic Refs
+  const playerRef = useRef<Player>({
+    id: 'player',
+    x: GAME_WIDTH / 2,
+    y: GAME_HEIGHT - 120,
+    width: 60,
+    height: 60,
+    hp: 1,
+    speed: 5
+  });
+  
+  const bulletsRef = useRef<Bullet[]>([]);
+  const enemiesRef = useRef<Enemy[]>([]);
+  const particlesRef = useRef<Particle[]>([]);
+  const scoreRef = useRef(0);
+  const lastEnemySpawnRef = useRef(0);
+  const bgPosRef = useRef(0);
+  const gameTimeRef = useRef(0);
+  const stageTimeRef = useRef(0);
+  const levelRef = useRef(1);
+  const shakeRef = useRef(0);
+  const imagesRef = useRef<Record<string, HTMLImageElement>>({});
+  const inputRef = useRef({ x: GAME_WIDTH / 2, y: GAME_HEIGHT - 120, isPressed: false });
+
+  const [uiScore, setUiScore] = useState(0);
+  const [currentLevel, setCurrentLevel] = useState(1);
+  const [levelProgress, setLevelProgress] = useState(0);
+  const [bannerText, setBannerText] = useState<string | null>(null);
+
+  useEffect(() => {
+    const urls = Object.values(ASSETS);
+    urls.forEach(url => {
+      const img = new Image();
+      img.src = url;
+      img.onload = () => { imagesRef.current[url] = img; };
+    });
+  }, []);
+
+  const resetGame = useCallback(() => {
+    playerRef.current = { id: 'player', x: GAME_WIDTH / 2, y: GAME_HEIGHT - 120, width: 60, height: 60, hp: 1, speed: 5 };
+    bulletsRef.current = [];
+    enemiesRef.current = [];
+    particlesRef.current = [];
+    scoreRef.current = 0;
+    lastEnemySpawnRef.current = 0;
+    gameTimeRef.current = 0;
+    stageTimeRef.current = 0;
+    levelRef.current = 1;
+    shakeRef.current = 0;
+    setUiScore(0);
+    setCurrentLevel(1);
+    setLevelProgress(0);
+    setBannerText("MISSION START");
+    setTimeout(() => setBannerText(null), 2000);
+  }, []);
+
+  const spawnExplosion = (x: number, y: number, color: string, count = 12) => {
+    for (let i = 0; i < count; i++) {
+      particlesRef.current.push({
+        id: Math.random().toString(),
+        x, y,
+        vx: (Math.random() - 0.5) * 12,
+        vy: (Math.random() - 0.5) * 12,
+        life: 1.0,
+        color,
+        size: Math.random() * 5 + 2
+      });
+    }
+  };
+
+  const update = useCallback((delta: number) => {
+    if (gameState !== 'PLAYING') return;
+
+    gameTimeRef.current += delta;
+    stageTimeRef.current += delta;
+    
+    // Screen Shake Decay
+    if (shakeRef.current > 0) shakeRef.current -= 0.5;
+
+    // Stage Progression Logic
+    const progress = (stageTimeRef.current / STAGE_LENGTH) * 100;
+    setLevelProgress(Math.min(100, progress));
+
+    if (stageTimeRef.current >= STAGE_LENGTH) {
+      stageTimeRef.current = 0;
+      levelRef.current += 1;
+      setCurrentLevel(levelRef.current);
+      setBannerText(`STAGE ${levelRef.current}`);
+      setTimeout(() => setBannerText(null), 2000);
+    }
+
+    const difficultyFactor = 1 + (levelRef.current - 1) * 0.3;
+    const spawnInterval = Math.max(300, 1600 / difficultyFactor);
+
+    // Background scrolling
+    bgPosRef.current = (bgPosRef.current + 3) % GAME_HEIGHT;
+
+    // Smooth Player Movement
+    const p = playerRef.current;
+    p.x += (inputRef.current.x - p.x) * 0.15;
+    p.y += (inputRef.current.y - p.y) * 0.15;
+    p.x = Math.max(p.width / 2, Math.min(GAME_WIDTH - p.width / 2, p.x));
+    p.y = Math.max(p.height / 2, Math.min(GAME_HEIGHT - p.height / 2, p.y));
+
+    // Player Shooting (Only when pressed)
+    if (inputRef.current.isPressed && gameTimeRef.current % 120 < delta) {
+       bulletsRef.current.push({
+          id: Math.random().toString(),
+          x: p.x, y: p.y - 30,
+          speedX: 0, speedY: -14,
+          owner: 'player', damage: 1
+       });
+    }
+
+    // Spawn Enemies
+    if (gameTimeRef.current - lastEnemySpawnRef.current > spawnInterval) {
+      const config = ENEMY_CONFIGS[Math.floor(Math.random() * ENEMY_CONFIGS.length)];
+      enemiesRef.current.push({
+        id: Math.random().toString(),
+        x: Math.random() * (GAME_WIDTH - config.width) + config.width / 2,
+        y: -config.height,
+        ...config,
+        hp: config.hp + Math.floor(levelRef.current / 2),
+        speed: config.speed * (1 + (levelRef.current - 1) * 0.1),
+        lastShot: gameTimeRef.current
+      });
+      lastEnemySpawnRef.current = gameTimeRef.current;
+    }
+
+    // Entities Logic
+    bulletsRef.current = bulletsRef.current.filter(b => {
+      b.x += b.speedX; b.y += b.speedY;
+      return b.y > -50 && b.y < GAME_HEIGHT + 50;
+    });
+
+    particlesRef.current = particlesRef.current.filter(p => {
+      p.x += p.vx; p.y += p.vy;
+      p.life -= 0.025;
+      return p.life > 0;
+    });
+
+    enemiesRef.current = enemiesRef.current.filter(e => {
+      e.y += e.speed;
+      
+      if (gameTimeRef.current - e.lastShot > e.fireRate / difficultyFactor) {
+        bulletsRef.current.push({
+          id: Math.random().toString(),
+          x: e.x, y: e.y + e.height / 2,
+          speedX: 0, speedY: 6,
+          owner: 'enemy', damage: 1
+        });
+        e.lastShot = gameTimeRef.current;
+      }
+
+      // Player Collision
+      const dx = Math.abs(e.x - p.x);
+      const dy = Math.abs(e.y - p.y);
+      if (dx < (e.width + p.width) * 0.35 && dy < (e.height + p.height) * 0.35) {
+        onGameOver(scoreRef.current);
+        return false;
+      }
+      return e.y < GAME_HEIGHT + 100;
+    });
+
+    // Collision Detection
+    bulletsRef.current.forEach((b, bIdx) => {
+      if (b.owner === 'player') {
+        enemiesRef.current.forEach(e => {
+          if (Math.abs(b.x - e.x) < e.width / 2 && Math.abs(b.y - e.y) < e.height / 2) {
+            e.hp -= b.damage;
+            bulletsRef.current.splice(bIdx, 1);
+            if (e.hp <= 0) {
+              scoreRef.current += e.scoreValue;
+              setUiScore(scoreRef.current);
+              spawnExplosion(e.x, e.y, '#f59e0b', 15);
+              shakeRef.current = 5;
+            } else {
+              spawnExplosion(b.x, b.y, '#ffffff', 3);
+            }
+          }
+        });
+      } else if (Math.abs(b.x - p.x) < p.width / 4 && Math.abs(b.y - p.y) < p.height / 4) {
+        onGameOver(scoreRef.current);
+      }
+    });
+
+    enemiesRef.current = enemiesRef.current.filter(e => e.hp > 0);
+
+  }, [gameState, onGameOver]);
+
+  const draw = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.save();
+    if (shakeRef.current > 0) {
+      ctx.translate((Math.random() - 0.5) * shakeRef.current, (Math.random() - 0.5) * shakeRef.current);
+    }
+
+    // Background
+    const bgImg = imagesRef.current[ASSETS.BACKGROUND];
+    if (bgImg) {
+      ctx.drawImage(bgImg, 0, bgPosRef.current, GAME_WIDTH, GAME_HEIGHT);
+      ctx.drawImage(bgImg, 0, bgPosRef.current - GAME_HEIGHT, GAME_WIDTH, GAME_HEIGHT);
+    }
+
+    // Particles
+    particlesRef.current.forEach(p => {
+      ctx.globalAlpha = p.life;
+      ctx.fillStyle = p.color;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
+    });
+    ctx.globalAlpha = 1.0;
+
+    // Enemies
+    enemiesRef.current.forEach(e => {
+      const config = ENEMY_CONFIGS.find(c => c.type === e.type);
+      const img = imagesRef.current[config?.asset || ''];
+      if (img) {
+        ctx.save();
+        ctx.translate(e.x, e.y);
+        ctx.drawImage(img, -e.width / 2, -e.height / 2, e.width, e.height);
+        ctx.restore();
+      }
+    });
+
+    // Player
+    const player = playerRef.current;
+    const pImg = imagesRef.current[ASSETS.PLAYER];
+    if (pImg) {
+      ctx.save();
+      ctx.translate(player.x, player.y);
+      const tilt = (inputRef.current.x - player.x) * 0.08;
+      ctx.rotate(tilt * (Math.PI / 180));
+      // Glow under player
+      ctx.shadowBlur = 15; ctx.shadowColor = '#3b82f6';
+      ctx.drawImage(pImg, -player.width / 2, -player.height / 2, player.width, player.height);
+      ctx.restore();
+    }
+
+    // Bullets
+    bulletsRef.current.forEach(b => {
+      ctx.shadowBlur = 8;
+      if (b.owner === 'player') {
+        ctx.fillStyle = '#60a5fa'; ctx.shadowColor = '#60a5fa';
+        ctx.fillRect(b.x - 2, b.y - 12, 4, 24);
+      } else {
+        ctx.fillStyle = '#ef4444'; ctx.shadowColor = '#ef4444';
+        ctx.beginPath(); ctx.arc(b.x, b.y, 5, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.shadowBlur = 0;
+    });
+
+    ctx.restore();
+  }, []);
+
+  const loop = useCallback((time: number) => {
+    update(16);
+    draw();
+    requestRef.current = requestAnimationFrame(loop);
+  }, [update, draw]);
+
+  useEffect(() => {
+    if (gameState === 'PLAYING') {
+      resetGame();
+      requestRef.current = requestAnimationFrame(loop);
+    } else {
+      if (requestRef.current) cancelAnimationFrame(requestRef.current);
+    }
+    return () => { if (requestRef.current) cancelAnimationFrame(requestRef.current); };
+  }, [gameState, loop, resetGame]);
+
+  const handleInput = (clientX: number, clientY: number) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = GAME_WIDTH / rect.width;
+    const scaleY = GAME_HEIGHT / rect.height;
+    inputRef.current.x = (clientX - rect.left) * scaleX;
+    // Offset Y so fighter is above finger
+    inputRef.current.y = (clientY - rect.top) * scaleY - 60;
+  };
+
+  return (
+    <div className="relative w-full h-full select-none touch-none overflow-hidden">
+      <canvas
+        ref={canvasRef}
+        width={GAME_WIDTH}
+        height={GAME_HEIGHT}
+        className="w-full h-full bg-slate-900"
+        onMouseMove={(e) => handleInput(e.clientX, e.clientY)}
+        onMouseDown={() => inputRef.current.isPressed = true}
+        onMouseUp={() => inputRef.current.isPressed = false}
+        onTouchMove={(e) => {
+          if (e.touches[0]) handleInput(e.touches[0].clientX, e.touches[0].clientY);
+          inputRef.current.isPressed = true;
+        }}
+        onTouchStart={() => inputRef.current.isPressed = true}
+        onTouchEnd={() => inputRef.current.isPressed = false}
+      />
+      
+      {gameState === 'PLAYING' && (
+        <>
+          <div className="absolute top-0 left-0 right-0 h-1 bg-white/10 overflow-hidden">
+            <div 
+              className="h-full bg-blue-500 transition-all duration-300 ease-linear shadow-[0_0_10px_#3b82f6]" 
+              style={{ width: `${levelProgress}%` }}
+            />
+          </div>
+          
+          <div className="absolute top-4 left-0 right-0 flex justify-between px-6 pointer-events-none">
+            <div className="flex flex-col">
+              <span className="text-blue-400 text-[10px] font-black uppercase tracking-widest opacity-80">STAGE {currentLevel}</span>
+              <span className="text-4xl font-mono text-white tabular-nums tracking-tighter drop-shadow-md">
+                {uiScore.toLocaleString()}
+              </span>
+            </div>
+            <div className="flex flex-col items-end">
+              <span className="text-red-400 text-[10px] font-black uppercase tracking-widest opacity-80">STRIKE TIME</span>
+              <span className="text-xl font-mono text-white/90">
+                {Math.floor(gameTimeRef.current / 1000)}s
+              </span>
+            </div>
+          </div>
+
+          {bannerText && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+              <div className="bg-blue-600/20 backdrop-blur-md border-y border-blue-400/50 w-full py-4 flex flex-col items-center animate-pulse">
+                <h2 className="text-white text-4xl font-black italic tracking-tighter">{bannerText}</h2>
+                <p className="text-blue-300 text-xs font-bold uppercase tracking-[0.3em]">Engage All Targets</p>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+};
+
+export default GameView;
