@@ -1,6 +1,6 @@
 
 export const ASSETS = {
-  BACKGROUND: 'https://gz-vchar-pub.nosdn.127.net/a6f381ff-b9fd-4017-bb4a-d31a535c34ff.png',
+  BACKGROUND: 'https://gz-vchar-pub.nosdn.127.net/c48a3462-1792-40b2-bddc-da96b235e191.png',
   PLAYER: 'https://gz-vchar-pub.nosdn.127.net/afec0fd8-fde5-41b2-9b14-873d76f37608.png',
   ENEMY1: 'https://gz-vchar-pub.nosdn.127.net/31f53d7b-ec35-4262-a9ce-46c7aea5e1de.png',
   ENEMY2: 'https://gz-vchar-pub.nosdn.127.net/b2bfaa0c-a25f-402e-8f62-d98daad29289.png',
